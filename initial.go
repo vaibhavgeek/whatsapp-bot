@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 	"time"
-	"log"
+	//"log"
 	"github.com/go-redis/redis"
 
 )
@@ -20,7 +20,7 @@ var client = redis.NewClient(&redis.Options{
 		DB:       0,  // use default DB
 	})
 
-client.Set("9512535646_b", "1", 0)
+
 type waHandler struct{
 
 }
@@ -57,9 +57,8 @@ func (*waHandler) HandleImageMessage(message whatsapp.ImageMessage) {
 }
 
 func main() {
-
-	
-	//create new WhatsApp connection
+	client.Set("9512535646_b", "1", 0)
+		//create new WhatsApp connection
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error creating connection: %v\n", err)
 		return
@@ -74,12 +73,16 @@ func main() {
 		return
 	}
 
-	<-time.After(1 * time.Minute)
+	<-time.After(45 * time.Second)
 }
 
 func login(wac *whatsapp.Conn) error {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Enter Your Phone Number: ")
+	text, _ := reader.ReadString('\n')
+	fmt.Println(text)
 	//load saved session
-	session, err := readSession()
+	session, err := readSession(text)
 	if err == nil {
 		//restore session
 		session, err = wac.RestoreSession(session)
@@ -100,16 +103,16 @@ func login(wac *whatsapp.Conn) error {
 	}
 
 	//save session
-	err = writeSession(session)
+	err = writeSession(session,text)
 	if err != nil {
 		return fmt.Errorf("error saving session: %v\n", err)
 	}
 	return nil
 }
 
-func readSession() (whatsapp.Session, error) {
+func readSession(s string) (whatsapp.Session, error) {
 	session := whatsapp.Session{}
-	file, err := os.Open("temp.gob")
+	file, err := os.Open(s+".gob")
 	if err != nil {
 		return session, err
 	}
@@ -122,8 +125,8 @@ func readSession() (whatsapp.Session, error) {
 	return session, nil
 }
 
-func writeSession(session whatsapp.Session) error {
-	file, err := os.Create("temp.gob")
+func writeSession(session whatsapp.Session, s string) error {
+	file, err := os.Create(s+".gob")
 	if err != nil {
 		return err
 	}

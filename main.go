@@ -24,7 +24,12 @@ func (*waHandler) HandleError(err error) {
 
 //Optional to be implemented. Implement HandleXXXMessage for the types you need.
 func (*waHandler) HandleTextMessage(message whatsapp.TextMessage) {
-	if message.Info.FromMe == false	{
+	val, err := client.Get("9512535646_t").Result()
+	if err != nil {
+		panic(err)
+	}
+	stamp = uint64(val)
+	if message.Info.FromMe == false && message.Info.Timestamp > stamp {
 		var result = GetResponse(message.Text)
 		fmt.Printf("Info : %v \n" , message.Info)
 		fmt.Printf("Message: %v \n", message.Text)
@@ -38,6 +43,7 @@ func (*waHandler) HandleTextMessage(message whatsapp.TextMessage) {
 			wac.Send(msg)
 
 		}
+		client.Set("9512535646_t", message.Info.Timestamp, 0)
 		fmt.Printf("Response : %v \n\n" , result.Fulfillment.Speech)
 	}
 
@@ -83,8 +89,12 @@ func main() {
 }
 
 func login(wac *whatsapp.Conn) error {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Enter Your Phone Number: ")
+	text, _ := reader.ReadString('\n')
+	fmt.Println(text)
 	//load saved session
-	session, err := readSession()
+	session, err := readSession(text)
 	if err == nil {
 		//restore session
 		session, err = wac.RestoreSession(session)
@@ -105,16 +115,16 @@ func login(wac *whatsapp.Conn) error {
 	}
 
 	//save session
-	err = writeSession(session)
+	err = writeSession(session,text)
 	if err != nil {
 		return fmt.Errorf("error saving session: %v\n", err)
 	}
 	return nil
 }
 
-func readSession() (whatsapp.Session, error) {
+func readSession(s string) (whatsapp.Session, error) {
 	session := whatsapp.Session{}
-	file, err := os.Open("temp.gob")
+	file, err := os.Open(s+".gob")
 	if err != nil {
 		return session, err
 	}
@@ -127,8 +137,8 @@ func readSession() (whatsapp.Session, error) {
 	return session, nil
 }
 
-func writeSession(session whatsapp.Session) error {
-	file, err := os.Create("temp.gob")
+func writeSession(session whatsapp.Session, s string) error {
+	file, err := os.Create(s+".gob")
 	if err != nil {
 		return err
 	}
