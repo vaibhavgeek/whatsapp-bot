@@ -8,14 +8,22 @@ import (
 	"os"
 	"strings"
 	"time"
-	. "github.com/mlabouardy/dialogflow-go-client"
-	apiai "github.com/mlabouardy/dialogflow-go-client/models"
 	"log"
+	"github.com/go-redis/redis"
+
 )
 
 var wac, err = whatsapp.NewConn(5 * time.Second)
+var client = redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
 
-type waHandler struct{}
+client.Set("9512535646_b", "1", 0)
+type waHandler struct{
+
+}
 
 //HandleError needs to be implemented to be a valid WhatsApp handler
 func (*waHandler) HandleError(err error) {
@@ -24,23 +32,9 @@ func (*waHandler) HandleError(err error) {
 
 //Optional to be implemented. Implement HandleXXXMessage for the types you need.
 func (*waHandler) HandleTextMessage(message whatsapp.TextMessage) {
-	if message.Info.FromMe == false	{
-		var result = GetResponse(message.Text)
-		fmt.Printf("Info : %v \n" , message.Info)
-		fmt.Printf("Message: %v \n", message.Text)
-		if result.Fulfillment.Speech != "" {
-			msg := whatsapp.TextMessage{
-			Info: whatsapp.MessageInfo{
-				RemoteJid: message.Info.RemoteJid,
-			},
-				Text: result.Fulfillment.Speech,
-			}
-			wac.Send(msg)
-
-		}
-		fmt.Printf("Response : %v \n\n" , result.Fulfillment.Speech)
+	if message.Info.FromMe == false {
+			client.Set("9512535646_t", message.Info.Timestamp, 0)
 	}
-
 }
 
 //Example for media handling. Video, Audio, Document are also possible in the same way
@@ -64,6 +58,7 @@ func (*waHandler) HandleImageMessage(message whatsapp.ImageMessage) {
 
 func main() {
 
+	
 	//create new WhatsApp connection
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error creating connection: %v\n", err)
@@ -79,7 +74,7 @@ func main() {
 		return
 	}
 
-	<-time.After(25 * time.Hour)
+	<-time.After(1 * time.Minute)
 }
 
 func login(wac *whatsapp.Conn) error {
@@ -140,20 +135,4 @@ func writeSession(session whatsapp.Session) error {
 	}
 	return nil
 }
-func GetResponse(input string) apiai.Result {
-	err, client := NewDialogFlowClient(apiai.Options{
-		AccessToken: "6a988106a0cb4d19afd53e4c00769bda",
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
 
-	query := apiai.Query{
-		Query: input,
-	}
-	resp, err := client.QueryFindRequest(query)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return resp.Result
-}
